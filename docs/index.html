@@ -1,0 +1,269 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>video-to-article</title>
+<meta name="description" content="A Claude Code skill that turns a video into an illustrated article.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎬</text></svg>">
+<style>
+:root{
+  --bg:#fcfbf9; --fg:#1a1a1a; --muted:#5f6368; --line:#e3e3e0;
+  --accent:#c15f3c; --code-bg:#f2f1ee; --card:#fff; --shadow:0 1px 2px rgba(0,0,0,.05);
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#141517; --fg:#e8e6e3; --muted:#9aa0a6; --line:#2b2d31;
+  --accent:#e08a63; --code-bg:#1d1f22; --card:#1a1c1e; --shadow:0 1px 2px rgba(0,0,0,.3);
+}}
+:root[data-theme="dark"]{
+  --bg:#141517; --fg:#e8e6e3; --muted:#9aa0a6; --line:#2b2d31;
+  --accent:#e08a63; --code-bg:#1d1f22; --card:#1a1c1e; --shadow:0 1px 2px rgba(0,0,0,.3);
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{
+  margin:0; background:var(--bg); color:var(--fg);
+  font:17px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  -webkit-font-smoothing:antialiased; padding:0 16px 96px;
+}
+.wrap{max-width:780px;margin:0 auto}
+
+header{padding:72px 0 44px;border-bottom:1px solid var(--line)}
+.eyebrow{
+  display:inline-block;font-size:.72rem;letter-spacing:.09em;text-transform:uppercase;
+  color:var(--accent);font-weight:600;margin-bottom:18px;
+}
+h1{
+  font-size:2.6rem;line-height:1.1;letter-spacing:-.03em;margin:0 0 .35em;
+  font-weight:650;
+}
+.lede{font-size:1.18rem;line-height:1.55;color:var(--muted);margin:0;max-width:34em}
+
+h2{font-size:1.32rem;letter-spacing:-.01em;margin:2.8em 0 .8em;font-weight:620}
+h3{font-size:1rem;margin:1.8em 0 .5em;font-weight:620}
+p{margin:0 0 1em}
+a{color:var(--accent);text-underline-offset:2px}
+ul{padding-left:1.3em;margin:0 0 1.1em}
+li{margin:.4em 0}
+
+code{
+  background:var(--code-bg);padding:.14em .4em;border-radius:4px;font-size:.87em;
+  font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+}
+pre{
+  background:var(--code-bg);border:1px solid var(--line);border-radius:10px;
+  padding:16px 18px;overflow-x:auto;margin:1em 0;font-size:.85rem;line-height:1.55;
+}
+pre code{background:none;padding:0;font-size:inherit}
+
+.install{position:relative;margin:1.6em 0 2em}
+.install pre{margin:0;padding-right:92px;background:var(--card);box-shadow:var(--shadow)}
+.copy{
+  position:absolute;top:10px;right:10px;border:1px solid var(--line);
+  background:var(--bg);color:var(--muted);border-radius:7px;padding:5px 11px;
+  font:inherit;font-size:.76rem;cursor:pointer;transition:all .15s;
+}
+.copy:hover{color:var(--fg);border-color:var(--muted)}
+.copy.done{color:var(--accent);border-color:var(--accent)}
+
+.tabs{display:flex;gap:4px;margin-bottom:8px}
+.tab{
+  border:1px solid transparent;background:none;color:var(--muted);cursor:pointer;
+  font:inherit;font-size:.8rem;padding:4px 11px;border-radius:7px;
+}
+.tab[aria-selected="true"]{background:var(--code-bg);color:var(--fg);border-color:var(--line)}
+
+.tree{
+  background:var(--card);border:1px solid var(--line);border-radius:10px;
+  padding:18px 20px;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  font-size:.83rem;line-height:1.85;box-shadow:var(--shadow);margin:1.2em 0;
+  overflow-x:auto;
+}
+.tree .dim{color:var(--muted)}
+.tree .hl{color:var(--accent)}
+
+table{border-collapse:collapse;width:100%;margin:1.2em 0;font-size:.88rem}
+td{border-bottom:1px solid var(--line);padding:.7em .6em;vertical-align:top}
+td:first-child{
+  white-space:nowrap;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  font-size:.92em;color:var(--accent);width:1%;padding-right:1.4em;
+}
+tr:last-child td{border-bottom:none}
+
+.note{
+  border-left:3px solid var(--line);padding:.2em 0 .2em 1.1em;
+  color:var(--muted);font-size:.95rem;margin:1.4em 0;
+}
+.ask{
+  background:var(--card);border:1px solid var(--line);border-radius:10px;
+  padding:16px 20px;margin:1.2em 0;box-shadow:var(--shadow);
+}
+.ask .who{font-size:.72rem;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);margin-bottom:6px}
+.ask .what{font-size:1.02rem}
+
+footer{
+  margin-top:4em;padding-top:2em;border-top:1px solid var(--line);
+  color:var(--muted);font-size:.88rem;display:flex;gap:1.4em;flex-wrap:wrap;
+}
+@media (max-width:640px){
+  header{padding:48px 0 32px}
+  h1{font-size:2rem}
+  .lede{font-size:1.06rem}
+  body{padding:0 16px 64px}
+  .install pre{padding-right:18px}
+  .copy{position:static;margin-top:10px;display:block;width:100%}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <div class="eyebrow">Claude Code skill</div>
+  <h1>video&#8209;to&#8209;article</h1>
+  <p class="lede">
+    Turn a video into an illustrated article you can actually read — with the
+    speaker's own diagrams dropped in where they are discussed.
+  </p>
+</header>
+
+<h2>What it does</h2>
+<p>
+  It pulls the subtitles, scans <strong>every frame</strong> to find the diagrams,
+  charts and slides, cuts screenshots at the moment each graphic is fully drawn,
+  cuts short clips where motion carries the meaning, and assembles a Markdown
+  write-up plus a styled page where those clips play inline.
+</p>
+<p>Works on a YouTube URL or a local video file.</p>
+
+<h2>Install</h2>
+<div class="tabs" role="tablist">
+  <button class="tab" role="tab" aria-selected="true" data-os="unix">macOS / Linux</button>
+  <button class="tab" role="tab" aria-selected="false" data-os="win">Windows</button>
+</div>
+<div class="install">
+  <pre><code id="cmd">git clone https://github.com/grimseal/video-to-article \
+  ~/.claude/skills/video-to-article</code></pre>
+  <button class="copy" id="copy">Copy</button>
+</div>
+<p>Claude Code picks it up on the next session. There is no registration step.</p>
+
+<h3>Requirements</h3>
+<ul>
+  <li><strong>Python 3</strong> — any version</li>
+  <li><strong>ffmpeg</strong> (with <code>ffprobe</code>) on your PATH</li>
+</ul>
+<pre><code>winget install Python.Python.3 Gyan.FFmpeg      # Windows
+brew install python ffmpeg                      # macOS
+sudo apt install python3 ffmpeg                 # Debian/Ubuntu</code></pre>
+<p><code>yt-dlp</code> and <code>markdown</code> install themselves on first use.</p>
+
+<h2>Use it</h2>
+<p>Just ask:</p>
+<div class="ask">
+  <div class="who">You</div>
+  <div class="what">make a text version of this talk with the diagrams — https://youtube.com/watch?v=&hellip;</div>
+</div>
+<p>
+  Claude reads the transcript, looks through contact sheets of the whole video to
+  find the graphics, picks the frames, writes the article and renders the page.
+  The skill tells it how.
+</p>
+
+<h3>What you end up with</h3>
+<div class="tree"><span class="hl">my-article/</span>
+  README.md      <span class="dim">the article</span>
+  index.html     <span class="dim">same article, clips playing inline</span>
+  images/        <span class="dim">every diagram and chart</span>
+  clips/         <span class="dim">short excerpts of the animated bits</span>
+  .vidnotes/     <span class="dim">hidden: video, subtitles, transcript, working sheets</span></div>
+<p class="note">
+  <code>.vidnotes/</code> is where all the weight is, and nothing in the article
+  links into it — delete it once you are done.
+</p>
+
+<h2>Driving the script yourself</h2>
+<table>
+<tr><td>fetch</td><td>download the subtitles and video, write a timed transcript</td></tr>
+<tr><td>sheets</td><td>tile the whole video into contact sheets and print a tile&nbsp;&rarr;&nbsp;timestamp map</td></tr>
+<tr><td>probe</td><td>tile specific timestamps side by side to pick the exact moment</td></tr>
+<tr><td>frames</td><td>cut screenshots from a <code>TIME|name</code> list</td></tr>
+<tr><td>clips</td><td>cut excerpts from a <code>START|DURATION|name</code> list</td></tr>
+<tr><td>html</td><td>render the Markdown into a page with inline video players</td></tr>
+</table>
+<pre><code>vidnotes.py fetch "&lt;url&gt;" --out my-article
+vidnotes.py sheets --out my-article
+vidnotes.py probe  --out my-article 93 1:36 2:56</code></pre>
+<p>
+  Every command takes the same <code>--out</code> project directory. Timestamps
+  accept <code>93</code>, <code>1:33</code> or <code>0:01:33</code>.
+</p>
+
+<h2>Why scan every frame</h2>
+<p>
+  Picking timestamps from the subtitles alone does not work. Graphics routinely
+  finish animating one to four seconds <em>after</em> the line that introduces
+  them, and some appear with no narration at all.
+</p>
+<p>
+  So the skill tiles the whole video into contact sheets, has the model actually
+  look at them, confirms the exact moment before cutting, and then checks its own
+  work on another contact sheet afterwards.
+</p>
+
+<h2>About what you make with it</h2>
+<p>
+  The article comes out written in the model's own words and restructured into
+  sections — not a verbatim transcript. That is both the better read and the right
+  call on someone else's video. The raw transcript stays in <code>.vidnotes/</code>
+  if you want it.
+</p>
+<p>If you publish the result anywhere, credit the source video and link it.</p>
+
+<footer>
+  <a href="https://github.com/grimseal/video-to-article">Source on GitHub</a>
+  <span>MIT licensed</span>
+</footer>
+
+</div>
+
+<script>
+(function () {
+  var CMDS = {
+    unix: 'git clone https://github.com/grimseal/video-to-article \\\n  ~/.claude/skills/video-to-article',
+    win:  'git clone https://github.com/grimseal/video-to-article `\n  "$env:USERPROFILE\\.claude\\skills\\video-to-article"'
+  };
+  var code = document.getElementById('cmd');
+  var btn = document.getElementById('copy');
+  var tabs = document.querySelectorAll('.tab');
+  var current = 'unix';
+
+  tabs.forEach(function (t) {
+    t.addEventListener('click', function () {
+      current = t.dataset.os;
+      tabs.forEach(function (o) { o.setAttribute('aria-selected', String(o === t)); });
+      code.textContent = CMDS[current];
+    });
+  });
+
+  btn.addEventListener('click', function () {
+    var text = CMDS[current];
+    var done = function () {
+      btn.textContent = 'Copied';
+      btn.classList.add('done');
+      setTimeout(function () { btn.textContent = 'Copy'; btn.classList.remove('done'); }, 1600);
+    };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(done, function () {});
+    } else {
+      var ta = document.createElement('textarea');
+      ta.value = text; document.body.appendChild(ta); ta.select();
+      try { document.execCommand('copy'); done(); } catch (e) {}
+      document.body.removeChild(ta);
+    }
+  });
+})();
+</script>
+</body>
+</html>
