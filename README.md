@@ -26,20 +26,17 @@ into it, so it can be deleted once you are done.
 
 ## Install
 
-Clone into your Claude Code skills directory:
+Drop this folder into your Claude Code skills directory, keeping its name:
 
-```bash
-git clone https://github.com/grimseal/video-to-article \
-  ~/.claude/skills/video-to-article
+```
+~/.claude/skills/video-to-article/
+  SKILL.md
+  scripts/vidnotes.py
 ```
 
-On Windows:
+On Windows that is `%USERPROFILE%\.claude\skills\video-to-article\`.
 
-```bash
-git clone https://github.com/grimseal/video-to-article "$env:USERPROFILE\.claude\skills\video-to-article"
-```
-
-Claude Code picks it up on the next session. No registration step.
+Claude Code picks it up on the next session. There is no registration step.
 
 ## Requirements
 
