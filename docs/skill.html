@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>SKILL.md &middot; video-to-article</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>&#127916;</text></svg>">
+<link rel="stylesheet" href="style.css">
+
+</head>
+<body>
+<div class="wrap">
+<nav>
+<a href="index.html">Overview</a>
+<a href="skill.html" aria-current="page">SKILL.md</a>
+<a href="script.html">vidnotes.py</a>
+<span class="sep"></span>
+<a class="ext" href="https://github.com/grimseal/video-to-article">GitHub &#8599;</a>
+</nav>
+<div class="pagehead">
+  <h1>SKILL.md</h1>
+  <p>The instructions Claude Code reads. This is the whole skill - the script below just does the mechanical parts.</p>
+  <div class="actions"><a class="btn" href="SKILL.md" download>Download</a><button class="btn" data-copy="SKILL.md">Copy raw</button><a class="btn" href="https://github.com/grimseal/video-to-article/blob/main/SKILL.md">View on GitHub</a></div>
+</div>
+<div class="md"><h1>Video → illustrated article</h1>
+<p>Produce something better than a transcript: a readable article, in the video's own
+order, with the speaker's diagrams and charts dropped in where they are discussed,
+and short video excerpts where a still frame would lose the point.</p>
+<p>All the mechanical work is in <code>scripts/vidnotes.py</code>. Your job is the judgement:
+which frames are worth showing, and writing the prose.</p>
+<h2>Requirements</h2>
+<p>Check both before the first command — the script cannot report a missing Python,
+because a missing Python is what stops it running at all:</p>
+<pre><code class="language-bash">python --version &amp;&amp; ffmpeg -version
+</code></pre>
+<p>Any version of Python 3 will do. If either is missing, tell the user what to
+install rather than guessing at a workaround:</p>
+<pre><code class="language-bash">winget install Python.Python.3 Gyan.FFmpeg      # Windows
+brew install python ffmpeg                      # macOS
+</code></pre>
+<p><code>yt-dlp</code> and <code>markdown</code> need no attention — the script pip-installs them into the
+user site on first use. <code>ffmpeg</code>/<code>ffprobe</code> are found on PATH, or via the <code>FFMPEG</code> /
+<code>FFPROBE</code> environment variables.</p>
+<p>Invoke as <code>python &lt;skill&gt;/scripts/vidnotes.py &lt;cmd&gt; --out &lt;proj&gt; ...</code>. Every command
+takes the same <code>--out</code> project directory and lays out:</p>
+<pre><code>&lt;proj&gt;/.vidnotes/ video.mp4, subs.srt, transcript.txt, meta.txt, sheets/, probe/, check_*.png
+&lt;proj&gt;/images/    screenshots
+&lt;proj&gt;/clips/     excerpts
+&lt;proj&gt;/README.md  the article you write
+&lt;proj&gt;/index.html the rendered page
+</code></pre>
+<p><code>.vidnotes/</code> holds the sources and every intermediate. It is dot-prefixed and
+carries the Windows hidden attribute, so the project folder shows only the four
+things the user actually wants. Nothing in the article links into it, so it can be
+deleted wholesale — and it is nearly all of the disk footprint, because the video
+lives there.</p>
+<p>Put the project somewhere the user can open it — inside the working directory,
+not in a temp folder.</p>
+<h2>Workflow</h2>
+<h3>1. Fetch</h3>
+<pre><code>vidnotes.py fetch &quot;&lt;url-or-local-file&gt;&quot; --out &lt;proj&gt; [--lang en] [--height 1080]
+</code></pre>
+<p>Prints title, uploader, duration, date; writes <code>.vidnotes/subs.srt</code>, a deduplicated
+<code>.vidnotes/transcript.txt</code> with <code>[M:SS]</code> timecodes, and <code>.vidnotes/video.mp4</code>.</p>
+<h3>2. Read the transcript</h3>
+<p>Read <code>.vidnotes/transcript.txt</code> end to end before anything else. It gives you the
+argument, the section boundaries and the numbers. Auto-captions have no
+punctuation and mangle names — treat spellings as unreliable and check anything
+you quote against a screenshot.</p>
+<h3>3. Scan every frame for graphics</h3>
+<pre><code>vidnotes.py sheets --out &lt;proj&gt; [--interval 4]
+</code></pre>
+<p>Tiles the whole video into contact sheets and <strong>prints a tile → timestamp grid for
+each sheet</strong>. Read the sheets with the Read tool. Use the printed grid to turn a
+tile position into a timestamp — do not count tiles by eye.</p>
+<p>Note every timestamp showing a diagram, chart, slide, code panel or UI mock, and
+skip the talking-head shots. 4 s is right for a dense explainer; raise it for a
+long talk, lower it for fast cuts.</p>
+<p><strong>Do not pick timestamps from the subtitles alone.</strong> Graphics routinely finish
+animating 1–4 s after the line that introduces them, and some appear with no
+narration at all.</p>
+<h3>4. Confirm the exact moment</h3>
+<pre><code>vidnotes.py probe --out &lt;proj&gt; 93 1:36 2:56
+</code></pre>
+<p>Tiles those specific timestamps into one sheet so you can see which is the right
+one. Pick the <strong>latest</strong> moment where the graphic is still complete — a frame
+grabbed mid-build shows a half-drawn chart.</p>
+<h3>5. Cut the screenshots</h3>
+<p>Write a spec file (or pipe it in), one <code>TIME|name</code> per line, numbered so they sort
+in reading order:</p>
+<pre><code>37|01-changes-per-day
+1:36|02-two-repos
+</code></pre>
+<pre><code>vidnotes.py frames --out &lt;proj&gt; --spec frames.txt
+</code></pre>
+<p>Writes full-resolution PNGs to <code>images/</code> and a <code>.vidnotes/check_*.png</code> contact sheet.
+<strong>Look at the check sheet.</strong> On a first pass expect a handful to have landed early;
+re-run those timestamps through <code>probe</code> and cut them again.</p>
+<h3>6. Cut clips for the animated parts</h3>
+<pre><code>vidnotes.py clips --out &lt;proj&gt; --spec clips.txt     # START|DURATION|name
+</code></pre>
+<p>Only where motion carries meaning — a diagram assembling itself, a counter running
+away, a sequence of states. 15–25 s each, five or so for a 10-minute video. A
+static diagram does not need a clip; prefer the screenshot.</p>
+<h3>7. Write the article</h3>
+<p>Write <code>&lt;proj&gt;/README.md</code> yourself, in the user's language, following the video's
+order. Reference each picture where it is discussed:</p>
+<pre><code class="language-markdown">![Short caption](images/01-changes-per-day.png)
+
+🎬 **Отрывок:** [what it shows](clips/A-layers-building.mp4) (1:22–1:37)
+</code></pre>
+<p>Any paragraph containing a link to <code>clips/*.mp4</code> becomes an inline player; the
+rest of that paragraph becomes the caption.</p>
+<p>Write it <strong>in your own words</strong>, restructured into sections with headings — a
+condensed version, not a line-by-line transcript. That is both the better read and
+the right call on someone else's copyrighted video. The verbatim transcript stays
+in <code>.vidnotes/</code> if the user wants it. Keep: section timecodes, every concrete number,
+and the author's own caveats. Open with the source (title, channel, duration, date,
+URL) and close with a short conclusion.</p>
+<h3>8. Render</h3>
+<pre><code>vidnotes.py html --out &lt;proj&gt; [--lang ru]
+</code></pre>
+<p>Builds <code>index.html</code> — light/dark aware, images clickable to full size, clips
+playing inline — and reports any referenced asset that is missing. Fix anything it
+flags.</p>
+<p>Tell the user the folder, link <code>README.md</code> and <code>index.html</code>, and give them a
+command to open the page:</p>
+<pre><code class="language-bash">start &quot;&quot; &quot;&lt;proj&gt;\index.html&quot;
+</code></pre>
+<h2>Gotchas</h2>
+<ul>
+<li><strong>The built-in browser cannot open <code>file://</code></strong>, so you cannot preview the page
+  there. Verify by checking the <code>html</code> command's asset report instead.</li>
+<li><strong>Do not publish this as an artifact.</strong> It is built from screenshots of someone
+  else's video; keep it local unless the user asks otherwise.</li>
+<li><strong>ffmpeg's <code>-pattern_type glob</code> is unavailable in many Windows builds.</strong> The
+  script works around it by copying files to sequential names; reuse
+  <code>tile_images()</code> rather than writing a new glob call.</li>
+<li><strong><code>python -I</code> hides user site-packages</strong>, so <code>yt-dlp</code> and <code>markdown</code> disappear.
+  Run the script as plain <code>python</code>.</li>
+<li><code>fetch --no-video</code> grabs subtitles only — useful to check the transcript before
+  committing to a large download.</li>
+</ul></div>
+<footer>
+  <a href="https://github.com/grimseal/video-to-article">Source on GitHub</a>
+  <span>MIT licensed</span>
+</footer>
+</div>
+<script>
+document.querySelectorAll('[data-copy]').forEach(function (btn) {
+  btn.addEventListener('click', function () {
+    fetch(btn.dataset.copy).then(function (r) { return r.text(); }).then(function (text) {
+      var done = function () {
+        var old = btn.textContent;
+        btn.textContent = 'Copied'; btn.classList.add('done');
+        setTimeout(function () { btn.textContent = old; btn.classList.remove('done'); }, 1600);
+      };
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(done, function () {});
+      } else {
+        var ta = document.createElement('textarea');
+        ta.value = text; document.body.appendChild(ta); ta.select();
+        try { document.execCommand('copy'); done(); } catch (e) {}
+        document.body.removeChild(ta);
+      }
+    });
+  });
+});
+</script>
+</body>
+</html>
